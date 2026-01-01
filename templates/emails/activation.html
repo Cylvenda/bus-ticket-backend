@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Activate Your Account</title>
+</head>
+
+<body
+     style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f4;">
+     <table role="presentation" style="width: 100%; border-collapse: collapse;">
+          <tr>
+               <td align="center" style="padding: 40px 0;">
+                    <table role="presentation"
+                         style="width: 600px; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); border-radius: 8px;">
+
+                         <!-- Header -->
+                         <tr>
+                              <td
+                                   style="padding: 40px 40px 30px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px 8px 0 0;">
+                                   <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">
+                                        {{ site_name }}
+                                   </h1>
+                              </td>
+                         </tr>
+
+                         <!-- Content -->
+                         <tr>
+                              <td style="padding: 40px;">
+                                   <h2 style="margin: 0 0 20px; color: #333333; font-size: 24px; font-weight: 600;">
+                                        Welcome, {{ username }}! 👋
+                                   </h2>
+
+                                   <p style="margin: 0 0 20px; color: #666666; font-size: 16px; line-height: 1.6;">
+                                        Thank you for signing up for <strong>{{ site_name }}</strong>! We're excited to
+                                        have you on board.
+                                   </p>
+
+                                   <p style="margin: 0 0 30px; color: #666666; font-size: 16px; line-height: 1.6;">
+                                        To get started, please verify your email address by clicking the button below:
+                                   </p>
+
+                                   <!-- CTA Button -->
+                                   <table role="presentation" style="margin: 0 auto 30px;">
+                                        <tr>
+                                             <td align="center"
+                                                  style="border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                                  <a href="{{ url }}"
+                                                       style="display: inline-block; padding: 16px 40px; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 6px;">
+                                                       Activate My Account
+                                                  </a>
+                                             </td>
+                                        </tr>
+                                   </table>
+
+                                   <!-- Alternative Link -->
+                                   <div
+                                        style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; border-left: 4px solid #667eea; margin-bottom: 30px;">
+                                        <p style="margin: 0 0 10px; color: #666666; font-size: 14px; font-weight: 600;">
+                                             Button not working?
+                                        </p>
+                                        <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.5;">
+                                             Copy and paste this link into your browser:
+                                        </p>
+                                        <p style="margin: 10px 0 0; word-break: break-all;">
+                                             <a href="{{ url }}"
+                                                  style="color: #667eea; text-decoration: none; font-size: 14px;">
+                                                  {{ url }}
+                                             </a>
+                                        </p>
+                                   </div>
+
+                                   <!-- Security Notice -->
+                                   <div
+                                        style="padding: 20px; background-color: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+                                        <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.5;">
+                                             ⚠️ <strong>Security note:</strong> This link will expire in 24 hours. If
+                                             you didn't create an account with {{ site_name }}, you can safely ignore
+                                             this email.
+                                        </p>
+                                   </div>
+
+                                   <p style="margin: 0 0 10px; color: #666666; font-size: 16px; line-height: 1.6;">
+                                        Best regards,
+                                   </p>
+                                   <p style="margin: 0; color: #333333; font-size: 16px; font-weight: 600;">
+                                        The {{ site_name }} Team
+                                   </p>
+                              </td>
+                         </tr>
+
+                         <!-- Footer -->
+                         <tr>
+                              <td
+                                   style="padding: 30px 40px; background-color: #f8f9fa; border-radius: 0 0 8px 8px; text-align: center;">
+                                   <p style="margin: 0 0 10px; color: #999999; font-size: 12px;">
+                                        Need help? Contact us at
+                                        <a href="mailto:{{ support_email }}"
+                                             style="color: #667eea; text-decoration: none;">
+                                             {{ support_email }}
+                                        </a>
+                                   </p>
+                                   <p style="margin: 0 0 10px; color: #999999; font-size: 12px;">
+                                        {{ company_address }}
+                                   </p>
+                                   <p style="margin: 0; color: #999999; font-size: 12px;">
+                                        © {% now "Y" %} {{ site_name }}. All rights reserved.
+                                   </p>
+                              </td>
+                         </tr>
+
+                    </table>
+               </td>
+          </tr>
+     </table>
+</body>
+
+</html>
