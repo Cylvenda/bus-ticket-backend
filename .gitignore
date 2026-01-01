@@ -1,0 +1,83 @@
+### Django template
+*.log
+*.pot
+*.pyc
+__pycache__/
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Django REST Framework
+*.sqlite3
+media/
+static/
+staticfiles/
+
+# REST Framework JWT
+*.key
+*.pem
+*.p12
+*.crt
+*.cert
+
+# Environment and credentials
+.env
+.env.local
+.env.*.local
+.venv/
+venv/
+ENV/
+
+# Python
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing and coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-*
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Project specific
+celerybeat-schedule
+celerybeat.pid
+
+# Database migrations (uncomment if you don't want to track migrations)
+# */migrations/*.py
+# !*/migrations/__init__.py

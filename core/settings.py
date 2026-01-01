@@ -1,7 +1,7 @@
 from datetime import timedelta
 from pathlib import Path
-import os
 from dotenv import load_dotenv
+import os
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -9,6 +9,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
 
+def get_env_list(key: str, default=None):
+    value = os.getenv(key)
+    if not value:
+        return default or []
+    return [item.strip() for item in value.split(",")]
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -24,15 +29,9 @@ ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+CORS_ALLOWED_ORIGINS = get_env_list("CORS_ALLOWED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = get_env_list("CSRF_TRUSTED_ORIGINS")
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
 
 AUTH_COOKIE = "access"
 AUTH_COOKIE_ACCESS_MAX_AGE = 60 * 10  # 10 minutes
@@ -207,19 +206,11 @@ SWAGGER_SETTINGS = {
     }
 }
 
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_HOST = "localhost"
-# EMAIL_PORT = 1025
-# EMAIL_HOST_USER = ""
-# EMAIL_HOST_PASSWORD = "pwfa bgsn dwer sgyd"
-# EMAIL_USE_TLS = False
-# EMAIL_USE_SSL = False
-
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "brayanmlawa0917@gmail.com"
-EMAIL_HOST_PASSWORD = "pwfa bgsn dwer sgyd"
-DEFAULT_FROM_EMAIL = "Bus Ticket Online Booking <brayanmlawa0917@gmail.com>"  # ← Fixed
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND")
+EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS") == "True"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
