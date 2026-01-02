@@ -9,11 +9,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
 
+
 def get_env_list(key: str, default=None):
     value = os.getenv(key)
     if not value:
         return default or []
     return [item.strip() for item in value.split(",")]
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -25,7 +27,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = os.getenv("DEBUG") == "True"
 
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+ALLOWED_HOSTS = get_env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1"])
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -41,8 +43,8 @@ AUTH_COOKIE_HTTP_ONLY = False
 AUTH_COOKIE_PATH = "/"
 AUTH_COOKIE_SAMESITE = "Lax"
 
-DOMAIN = "localhost:5173"
-SITE_NAME = "Bus Ticket Booking"
+DOMAIN = os.getenv("DOMAIN")
+SITE_NAME = os.getenv("SITE_NAME")
 
 
 # Application definition
@@ -83,7 +85,7 @@ ROOT_URLCONF = "core.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"], 
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -148,8 +150,8 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 DJOSER = {
-    "DOMAIN": "localhost:5173",  # Your frontend domain
-    "SITE_NAME": "Bus Ticket Booking",
+    "DOMAIN": os.getenv("DOMAIN"),  # Your frontend domain
+    "SITE_NAME": os.getenv("SITE_NAME"),
     "LOGIN_FIELD": "email",
     "SEND_CONFIRMATION_EMAIL": True,
     "PASSWORD_CHANGE_EMAIL_CONFIRMATION": True,
@@ -174,7 +176,7 @@ AUTHENTICATION_BACKENDS = [
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-       "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.AllowAny",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "accounts.authentication.CustomJWTAuthentication",
