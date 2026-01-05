@@ -54,7 +54,7 @@ class Command(BaseCommand):
                     BusAssignment.objects.create(
                         schedule=schedule,
                         bus=bus,
-                        available_seats=bus.total_seats,
+                        available_seats=bus.seat_layout.total_seats,
                         status="ACTIVE",
                     )
 

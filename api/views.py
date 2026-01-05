@@ -1,5 +1,6 @@
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -16,6 +17,7 @@ from .models import (
     Schedule,
     Passenger,
     PromoCode,
+    Booking,
 )
 from .serializers import (
     BusCompanySerializer,
@@ -27,12 +29,15 @@ from .serializers import (
     ScheduleSearchSerializer,
     BookingCreateSerializer,
     SearchRouteSerializer,
-    BookingCreateSerializer
+    BookingCreateSerializer,
 )
 from .services import apply_promo, book_seat
 from django.db.models import Count
 from django.utils import timezone
+from datetime import timedelta
 from typing import cast, Any
+
+HOLD_DURATION_MINUTES = 10
 
 
 class BusCompanyViewSet(ModelViewSet):
@@ -71,6 +76,17 @@ class ScheduleViewSet(ModelViewSet):
     # permission_classes = [IsAuthenticated]
 
 
+@api_view(["GET"])
+def get_active_routes(request):
+    routes = Route.objects.filter(is_active=True)
+
+    if not routes.exists():
+        return Response({"detail": "No active routes available"}, status=404)
+
+    serializer = RouteSerializer(routes, many=True)
+    return Response(serializer.data)
+
+
 class SearchRouteView(APIView):
 
     def post(self, request):
@@ -105,7 +121,6 @@ class SearchRouteView(APIView):
                 template__route__origin__icontains=origin,
                 template__route__destination__icontains=destination,
                 travel_date=travel_date,
-                status="ACTIVE",
                 bus_assignments__bus__is_active=True,
             )
             .select_related("template__route")
@@ -133,12 +148,58 @@ class SearchRouteView(APIView):
 
         response_serializer = ScheduleSearchSerializer(schedules, many=True)
         return Response(
-            {
-                "success": True,
-                "results": response_serializer.data,
-            },
+            response_serializer.data,
             status=status.HTTP_200_OK,
         )
+
+
+@api_view(["POST"])
+def hold_seat(request):
+    user = request.user if request.user.is_authenticated else None
+
+    schedule_id = request.data["schedule_id"]
+    bus_assignment_id = request.data["bus_assignment_id"]
+    seat_number = request.data["seat_number"]
+
+    expires_at = timezone.now() + timedelta(minutes=HOLD_DURATION_MINUTES)
+
+    now = timezone.now()
+
+    with transaction.atomic():
+        # Check if seat already HELD or CONFIRMED, ignoring expired HELD seats
+        exists = (
+            Booking.objects.filter(
+                bus_assignment_id=bus_assignment_id,
+                seat_number=seat_number,
+                status__in=["HELD", "CONFIRMED"],
+            )
+            .exclude(
+                status="HELD", hold_expires_at__lt=now  # exclude expired HELD seats
+            )
+            .exists()
+        )
+
+        if exists:
+            return Response(
+                {"detail": "Seat already booked or held"},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # Create the HELD booking
+        booking = Booking.objects.create(
+            user=user,
+            schedule_id=schedule_id,
+            bus_assignment_id=bus_assignment_id,
+            seat_number=seat_number,
+            price_paid=Schedule.objects.get(id=schedule_id).price,
+            status="HELD",
+            hold_expires_at=expires_at,
+        )
+
+    return Response(
+        {"booking_id": booking.pk, "hold_expires_at": booking.hold_expires_at},
+        status=status.HTTP_201_CREATED,
+    )
 
 
 class CreateBookingView(APIView):
@@ -171,9 +232,9 @@ class CreateBookingView(APIView):
 
         # Validate bus assignment
         try:
-            bus_assignment = BusAssignment.objects.select_related(
-                "bus"
-            ).get(id=bus_assignment_id, schedule=schedule, status="ACTIVE")
+            bus_assignment = BusAssignment.objects.select_related("bus").get(
+                id=bus_assignment_id, schedule=schedule, status="ACTIVE"
+            )
         except BusAssignment.DoesNotExist:
             return Response(
                 {"detail": "Bus not found for this schedule"},
@@ -181,10 +242,10 @@ class CreateBookingView(APIView):
             )
 
         # Validate seat number is within bus capacity
-        if seat_number < 1 or seat_number > bus_assignment.bus.total_seats:
+        if seat_number < 1 or seat_number > bus_assignment.bus.seat_layout.total_seats:
             return Response(
                 {
-                    "detail": f"Invalid seat number. This bus has seats 1-{bus_assignment.bus.total_seats}"
+                    "detail": f"Invalid seat number. This bus has seats 1-{bus_assignment.bus.seat_layout.total_seats}"
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -214,7 +275,7 @@ class CreateBookingView(APIView):
         try:
             booking = book_seat(
                 user=user,
-                schedule=schedule, 
+                schedule=schedule,
                 bus_assignment=bus_assignment,
                 seat_number=seat_number,
                 price=final_price,
@@ -252,3 +313,40 @@ class CreateBookingView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+@api_view(["POST"])
+def get_seat_status(request):
+    """
+    Returns held seats and booked seats separately
+    """
+    schedule_id = request.data.get("schedule_id")
+    bus_assignment_id = request.data.get("bus_assignment_id")
+
+    if not schedule_id or not bus_assignment_id:
+        return Response(
+            {"detail": "schedule_id and bus_assignment_id are required"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    now = timezone.now()
+
+    held_seats = Booking.objects.filter(
+        schedule_id=schedule_id,
+        bus_assignment_id=bus_assignment_id,
+        status="HELD",
+        hold_expires_at__gt=now,
+    ).values_list("seat_number", flat=True)
+
+    booked_seats = Booking.objects.filter(
+        schedule_id=schedule_id,
+        bus_assignment_id=bus_assignment_id,
+        status="CONFIRMED",
+    ).values_list("seat_number", flat=True)
+
+    return Response(
+        {
+            "held_seats": list(held_seats),
+            "booked_seats": list(booked_seats),
+        }
+    )

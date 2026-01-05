@@ -1,3 +1,4 @@
+APScheduler==3.11.2
 asgiref==3.9.2
 certifi==2025.8.3
 cffi==2.0.0
@@ -32,6 +33,7 @@ social-auth-core==4.8.1
 sqlparse==0.5.3
 toposort==1.10
 tzdata==2025.2
+tzlocal==5.3.1
 uritemplate==4.2.0
 urllib3==2.5.0
 whitenoise==6.11.0

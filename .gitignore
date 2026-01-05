@@ -81,3 +81,14 @@ celerybeat.pid
 # Database migrations (uncomment if you don't want to track migrations)
 # */migrations/*.py
 # !*/migrations/__init__.py
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

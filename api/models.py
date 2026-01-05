@@ -20,16 +20,26 @@ class BusCompany(models.Model):
         return self.name
 
 
+class SeatLayout(models.Model):
+    name = models.CharField(max_length=50)
+    layout = models.JSONField()
+    total_seats = models.PositiveIntegerField()
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.name} | Seat {self.total_seats}"
+
+
 class Bus(models.Model):
     company = models.ForeignKey(
         BusCompany, on_delete=models.CASCADE, related_name="buses"
     )
     plate_number = models.CharField(max_length=20, unique=True)
     bus_type = models.CharField(max_length=100)
-    total_seats = models.PositiveIntegerField()
     amenities = models.TextField(
         blank=True
     )  # inserted like dictionary ("AC", "WIFI", ....)
+    seat_layout = models.ForeignKey(SeatLayout, on_delete=models.PROTECT)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -41,6 +51,7 @@ class Route(models.Model):
     destination = models.CharField(max_length=255)
     distance_km = models.PositiveIntegerField(blank=True, null=True)
     estimated_duration_minutes = models.PositiveIntegerField(null=True)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.origin} → {self.destination}"
@@ -75,24 +86,15 @@ class ScheduleTemplate(models.Model):
 
 class Schedule(models.Model):
 
-    STATUS_CHOICES = [
-        ("ACTIVE", "Active"),
-        ("CANCELLED", "Cancelled"),
-        ("COMPLETED", "Completed"),
-    ]
-
     template = models.ForeignKey(
         ScheduleTemplate, on_delete=models.CASCADE, related_name="schedule"
     )
     travel_date = models.DateField()
-
     departure_time = models.TimeField()
     arrival_time = models.TimeField()
-
     price = models.DecimalField(
         max_digits=10, decimal_places=2, validators=[MinValueValidator(0)]
     )
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="ACTIVE")
 
     # If price is not set, inherit from template
     def save(self, *args, **kwargs):
@@ -107,18 +109,11 @@ class Schedule(models.Model):
 # bus assignment to schedule
 class BusAssignment(models.Model):
 
-    STATUS_CHOICES = [
-        ("ACTIVE", "Active"),
-        ("CANCELLED", "Cancelled"),
-        ("COMPLETED", "Completed"),
-    ]
-
     schedule = models.ForeignKey(
         Schedule, on_delete=models.CASCADE, related_name="bus_assignments"
     )
     bus = models.ForeignKey(Bus, on_delete=models.CASCADE)
     available_seats = models.PositiveIntegerField()
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="ACTIVE")
 
     class Meta:
         unique_together = ("schedule", "bus")
@@ -128,6 +123,12 @@ class BusAssignment(models.Model):
 
 
 class Booking(models.Model):
+    STATUS_CHOICES = (
+        ("HELD", "Held"),
+        ("CONFIRMED", "Confirmed"),
+        ("CANCELLED", "Cancelled"),
+    )
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -139,13 +140,12 @@ class Booking(models.Model):
         Schedule, on_delete=models.CASCADE, related_name="booking"
     )
     bus_assignment = models.ForeignKey(
-        "BusAssignment",
-        on_delete=models.CASCADE,
-        related_name="bookings",
+        "BusAssignment", on_delete=models.CASCADE, related_name="bookings"
     )
-    seat_number = models.PositiveIntegerField()
+    seat_number = models.CharField(max_length=5)
     price_paid = models.DecimalField(max_digits=10, decimal_places=2)
-
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="HELD")
+    hold_expires_at = models.DateTimeField(null=True, blank=True)
     is_paid = models.BooleanField(default=False)
     booked_at = models.DateTimeField(auto_now_add=True)
 
@@ -187,7 +187,11 @@ class Passenger(models.Model):
     ]
 
     booking = models.OneToOneField(
-        Booking, on_delete=models.CASCADE, related_name="passenger"
+        Booking,
+        on_delete=models.CASCADE,
+        related_name="passenger",
+        null=True,
+        blank=True,
     )
     first_name = models.CharField(max_length=200)
     last_name = models.CharField(max_length=200)
@@ -207,7 +211,6 @@ class PromoCode(models.Model):
 
     code = models.CharField(max_length=20, unique=True)
     description = models.TextField()
-
     discount_type = models.CharField(
         max_length=15,
         choices=[
@@ -219,12 +222,10 @@ class PromoCode(models.Model):
     max_discount = models.DecimalField(
         max_digits=10, decimal_places=2, blank=True, null=True
     )
-
     valid_from = models.DateTimeField()
     valid_until = models.DateTimeField()
     max_uses = models.PositiveIntegerField()
     current_uses = models.PositiveIntegerField(default=0)
-
     is_active = models.BooleanField(default=True)
 
     def is_valid(self):

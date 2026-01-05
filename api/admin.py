@@ -13,6 +13,7 @@ from .models import (
     PromoCode,
     Passenger,
     BusAssignment,
+    SeatLayout,
 )
 
 
@@ -48,8 +49,7 @@ class ScheduleTemplateAdmin(admin.ModelAdmin):
                         BusAssignment.objects.create(
                             schedule=schedule,
                             bus=bus,
-                            available_seats=bus.total_seats,
-                            status="ACTIVE",
+                            available_seats=bus.seat_layout.total_seats,
                         )
                     created += 1
 
@@ -68,5 +68,6 @@ admin.site.register(
         PromoCode,
         Passenger,
         BusAssignment,
+        SeatLayout,
     ]
 )

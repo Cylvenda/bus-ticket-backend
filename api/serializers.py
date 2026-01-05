@@ -10,6 +10,7 @@ from .models import (
     RouteStop,
     ScheduleTemplate,
     Passenger,
+    SeatLayout,
 )
 
 
@@ -26,18 +27,26 @@ class BusCompanySerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at"]
 
+class SeatLayoutSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SeatLayout
+        fields = ["id", "name", "layout", "total_seats", "is_active"]
+        read_only_fields = ["id"]
 
 class BusSerializer(serializers.ModelSerializer):
+    total_seats = serializers.IntegerField(source="seat_layout.total_seats", read_only=True)
+    seat_layout_structure = serializers.CharField(source="seat_layout.layout", read_only=True)
     class Meta:
         model = Bus
         fields = [
             "id",
             "company",
             "plate_number",
-            "total_seats",
             "bus_type",
             "amenities",
             "is_active",
+            "total_seats",
+            "seat_layout_structure",
         ]
         read_only_fields = ["id"]
 
@@ -97,7 +106,6 @@ class ScheduleSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
 
-
 class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
@@ -118,9 +126,11 @@ class BusAssignmentSerializer(serializers.ModelSerializer):
     bus_plate = serializers.CharField(source="bus.plate_number", read_only=True)
     bus_type = serializers.CharField(source="bus.bus_type", read_only=True)
     company_name = serializers.CharField(source="bus.company.name", read_only=True)
-    total_seats = serializers.IntegerField(source="bus.total_seats", read_only=True)
     amenities = serializers.CharField(source="bus.amenities", read_only=True)
-    available_seats = serializers.SerializerMethodField()
+    total_seats = serializers.IntegerField(source="bus.seat_layout.total_seats", read_only=True)
+    seat_layout_structure = serializers.JSONField(
+        source="bus.seat_layout.layout", read_only=True
+    )
 
     class Meta:
         model = BusAssignment
@@ -129,20 +139,11 @@ class BusAssignmentSerializer(serializers.ModelSerializer):
             "bus_plate",
             "bus_type",
             "company_name",
-            "total_seats",
             "amenities",
+            "total_seats",
             "available_seats",
-            "status",
+            "seat_layout_structure",
         ]
-
-    def get_available_seats(self, obj):
-        """Calculate available seats for this specific bus assignment"""
-        booked = Booking.objects.filter(
-            schedule=obj.schedule,
-            # You might need to add a bus field to Booking model
-            # or filter by seat numbers assigned to this bus
-        ).count()
-        return obj.available_seats  # Or: obj.bus.total_seats - booked
 
 
 class ScheduleSearchSerializer(serializers.ModelSerializer):
