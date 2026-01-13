@@ -39,9 +39,9 @@ AUTH_COOKIE = "access"
 AUTH_COOKIE_ACCESS_MAX_AGE = 60 * 10  # 10 minutes
 AUTH_COOKIE_REFRESH_MAX_AGE = 60 * 60 * 24  # 24 hrs
 AUTH_COOKIE_SECURE = True  # In development must be true
-AUTH_COOKIE_HTTP_ONLY = False
+AUTH_COOKIE_HTTP_ONLY = True
 AUTH_COOKIE_PATH = "/"
-AUTH_COOKIE_SAMESITE = "Lax"
+AUTH_COOKIE_SAMESITE = "None"
 
 DOMAIN = os.getenv("DOMAIN")
 SITE_NAME = os.getenv("SITE_NAME")
@@ -135,7 +135,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Africa/Dar_es_Salaam"
 
 USE_I18N = True
 
@@ -150,14 +150,12 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 DJOSER = {
-    "DOMAIN": os.getenv("DOMAIN"),  # Your frontend domain
-    "SITE_NAME": os.getenv("SITE_NAME"),
     "LOGIN_FIELD": "email",
     "SEND_CONFIRMATION_EMAIL": True,
     "PASSWORD_CHANGE_EMAIL_CONFIRMATION": True,
     "PASSWORD_RESET_CONFIRM_URL": "auth/password-reset/{uid}/{token}",
     "SEND_ACTIVATION_EMAIL": True,
-    "ACTIVATION_URL": "auth/activation/{uid}/{token}",
+    "ACTIVATION_URL": "account-activation/{uid}/{token}",
     "PASSWORD_RESET_SHOW_EMAIL_NOT_FOUND": True,
     "SERIALIZERS": {
         "current_user": "accounts.serializers.CustomUserSerializer",
@@ -183,12 +181,14 @@ REST_FRAMEWORK = {
     ],
 }
 
-REST_AUTH = {
-    "USE_JWT": True,
-    "JWT_AUTH_HTTPONLY": True,
-    "JWT_AUTH_COOKIE": "core-app-auth",
-    "JWT_AUTH_REFRESH_COOKIE": "core-refresh-token",
-}
+CORS_ALLOW_HEADERS = [
+    "authorization",
+    "content-type",
+    "x-csrftoken",
+]
+
+
+
 
 SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
