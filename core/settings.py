@@ -151,20 +151,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 DJOSER = {
     "LOGIN_FIELD": "email",
-    "SEND_CONFIRMATION_EMAIL": True,
-    "PASSWORD_CHANGE_EMAIL_CONFIRMATION": True,
-    "PASSWORD_RESET_CONFIRM_URL": "auth/password-reset/{uid}/{token}",
-    "SEND_ACTIVATION_EMAIL": True,
-    "ACTIVATION_URL": "account-activation/{uid}/{token}",
-    "PASSWORD_RESET_SHOW_EMAIL_NOT_FOUND": True,
     "SERIALIZERS": {
         "current_user": "accounts.serializers.CustomUserSerializer",
         "user": "accounts.serializers.CustomUserSerializer",
         "provider_auth": "djoser.social.serializers.ProviderAuthSerializer",
-    },
-    "EMAIL": {
-        "activation": "accounts.emails.CustomActivationEmail",
-    },
+    }
 }
 
 AUTHENTICATION_BACKENDS = [
