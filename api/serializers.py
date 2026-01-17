@@ -90,33 +90,17 @@ class ScheduleTemplateSerializer(serializers.ModelSerializer):
 
 
 class ScheduleSerializer(serializers.ModelSerializer):
-    route = serializers.CharField(source="template.route.name", read_only=True)
-    departure_time = serializers.SerializerMethodField()
-    arrival_time = serializers.SerializerMethodField()
+    template = ScheduleTemplateSerializer(read_only=True)
 
     class Meta:
         model = Schedule
         fields = [
             "id",
-            "route",
+            "travel_date",
             "departure_time",
             "arrival_time",
             "price",
-        ]
-        read_only_fields = ["id"]
-
-
-class BookingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Booking
-        fields = [
-            "id",
-            "user",
-            "schedule",
-            "seat",
-            "total_price",
-            "booked_at",
-            "is_paid",
+            "template",
         ]
 
 
@@ -198,6 +182,42 @@ class BookingCreateSerializer(serializers.Serializer):
         if value < 1:
             raise serializers.ValidationError("Seat number must be positive")
         return value
+
+
+class BusMinimalSerializer(serializers.ModelSerializer):
+    company_name = serializers.CharField(source="company.name", read_only=True)
+
+    class Meta:
+        model = Bus
+        fields = ["id", "plate_number", "company_name"]
+
+
+class BusAssignmentSerializer(serializers.ModelSerializer):
+    bus = BusMinimalSerializer(read_only=True)
+
+    class Meta:
+        model = BusAssignment
+        fields = ["id", "available_seats", "bus"]
+
+
+class BookingSerializer(serializers.ModelSerializer):
+    schedule = ScheduleSerializer(read_only=True)
+    bus_assignment = BusAssignmentSerializer(read_only=True)
+    passenger = PassengerSerializer(read_only=True)
+
+    class Meta:
+        model = Booking
+        fields = [
+            "id",
+            "schedule",
+            "bus_assignment",
+            "seat_number",
+            "price_paid",
+            "status",
+            "is_paid",
+            "booked_at",
+            "passenger",
+        ]
 
 
 class SearchRouteSerializer(serializers.Serializer):

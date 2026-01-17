@@ -20,6 +20,7 @@ from .models import (
     Booking,
 )
 from .serializers import (
+    BookingSerializer,
     BusCompanySerializer,
     BusSerializer,
     RouteSerializer,
@@ -350,3 +351,21 @@ def get_seat_status(request):
             "booked_seats": list(booked_seats),
         }
     )
+
+
+class BookingListView(APIView):
+    def get(self, request):
+        bookings = Booking.objects.select_related(
+            "schedule",
+            "schedule__template",
+            "schedule__template__route",
+            "bus_assignment",
+            "bus_assignment__bus",
+            "bus_assignment__bus__company",
+            "bus_assignment__bus__seat_layout",
+            "passenger",
+            "user",
+        )
+
+        serializer = BookingSerializer(bookings, many=True)
+        return Response(serializer.data)

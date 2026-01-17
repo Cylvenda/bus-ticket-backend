@@ -1,10 +1,12 @@
 from django.urls import path
 from .views import (
+    BookingListView,
     SearchRouteView,
     CreateBookingView,
     get_active_routes,
     hold_seat,
     get_seat_status,
+    
 )
 
 urlpatterns = [
@@ -13,4 +15,5 @@ urlpatterns = [
     path("routes/active/", get_active_routes, name="active-routes"),
     path("hold-seat/", hold_seat, name="hold-seat"),
     path("get-booked-seats/", get_seat_status, name="get-booked-seats"),
+    path("get-bookings/", BookingListView.as_view(), name="booking-list"),
 ]
