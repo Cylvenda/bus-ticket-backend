@@ -2,48 +2,37 @@
 from django.db import transaction, IntegrityError
 from django.core.exceptions import ValidationError
 from decimal import Decimal
-
+from django.utils import timezone
 from .models import Booking, Schedule, PromoCode, Bus
 
 
 @transaction.atomic
-def book_seat(user, schedule, bus_assignment, seat_number, price):
-    """
-    Atomically book a seat on a specific bus assignment
-    No need to pass guest_email/guest_phone - they'll be in Passenger model
-    """
-    # Check if seat is already booked
-    if Booking.objects.filter(
-        bus_assignment=bus_assignment, seat_number=seat_number
-    ).exists():
-        raise ValidationError(
-            f"Seat {seat_number} is already booked on bus {bus_assignment.bus.plate_number}"
+def book_seat(*, user, schedule, bus_assignment, seat_number, price):
+    now = timezone.now()
+
+    # Lock any conflicting bookings
+    seat_taken = (
+        Booking.objects.select_for_update()
+        .filter(
+            bus_assignment=bus_assignment,
+            seat_number=seat_number,
+            status__in=["HELD", "CONFIRMED"],
         )
+        .exclude(status="HELD", hold_expires_at__lt=now)
+        .exists()
+    )
 
-    # Check if bus has available seats
-    booked_count = Booking.objects.filter(
-        bus_assignment=bus_assignment, is_paid=True
-    ).count()
+    if seat_taken:
+        raise ValidationError(f"Seat {seat_number} is already booked")
 
-    if booked_count >= bus_assignment.bus.total_seats:
-        raise ValidationError("This bus is fully booked")
-
-    if bus_assignment.available_seats <= 0:
-        raise ValidationError("No seats available on this bus")
-
-    # Create the booking
     booking = Booking.objects.create(
-        user=user,  # Can be None for guest bookings
+        user=user,  # None for guest
         schedule=schedule,
         bus_assignment=bus_assignment,
         seat_number=seat_number,
         price_paid=price,
-        is_paid=False,
+        status="CONFIRMED",  # or HELD depending on flow
     )
-
-    # Decrement available seats
-    bus_assignment.available_seats -= 1
-    bus_assignment.save()
 
     return booking
 

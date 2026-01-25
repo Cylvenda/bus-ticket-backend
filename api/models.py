@@ -2,6 +2,7 @@ from django.db import models
 from accounts.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+from django.db.models import Q
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -28,6 +29,17 @@ class SeatLayout(models.Model):
 
     def __str__(self):
         return f"{self.name} | Seat {self.total_seats}"
+
+
+    def get_all_seats(self) -> list[str]:
+        seats = []
+
+        rows = self.layout.get("rows", [])
+
+        for row in rows:
+            seats.extend(row)
+
+        return seats
 
 
 class Bus(models.Model):
@@ -61,8 +73,8 @@ class RouteStop(models.Model):
     route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name="stops")
     stop_name = models.CharField(max_length=200)
     stop_order = models.PositiveIntegerField()
-    arrival_offset_min = models.PositiveIntegerField()
-    departure_offset_min = models.PositiveIntegerField()
+    arrival_offset_min = models.PositiveIntegerField(null=True, blank=True)
+    departure_offset_min = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["stop_order"]
@@ -81,7 +93,7 @@ class ScheduleTemplate(models.Model):
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.route} @ {self.departure_time}"
+        return f"{self.route} @ {self.departure_time} | {self.arrival_time}"
 
 
 class Schedule(models.Model):
@@ -95,6 +107,7 @@ class Schedule(models.Model):
     price = models.DecimalField(
         max_digits=10, decimal_places=2, validators=[MinValueValidator(0)]
     )
+    status = models.CharField(max_length=40, default="ACTIVE")
 
     # If price is not set, inherit from template
     def save(self, *args, **kwargs):
@@ -103,7 +116,7 @@ class Schedule(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.template.route} | {self.travel_date}"
+        return f"{self.template.route} | {self.travel_date} "
 
 
 # bus assignment to schedule
@@ -153,7 +166,13 @@ class Booking(models.Model):
         passenger: "Passenger"
 
     class Meta:
-        unique_together = ("bus_assignment", "seat_number")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["bus_assignment", "seat_number"],
+                condition=Q(status__in=["HELD", "CONFIRMED"]),
+                name="unique_active_seat_booking",
+            )
+        ]
 
     def __str__(self):
         if self.user:
@@ -197,7 +216,7 @@ class Passenger(models.Model):
     last_name = models.CharField(max_length=200)
     email = models.EmailField()
     phone = models.CharField(max_length=20)
-    age = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(120)])
+    age_group = models.CharField(max_length=50)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     nationality = models.CharField(max_length=50)
     boarding_point = models.CharField(max_length=200)

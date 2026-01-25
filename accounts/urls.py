@@ -11,5 +11,5 @@ urlpatterns = [
     path("jwt/create/", CustomeTokenObtainPairView.as_view()),
     path("jwt/refresh/", CustomeTokenRefreshView.as_view()),
     path("jwt/verify/", CustomeTokenVerifyView.as_view()),
-    path("jwt/logout/", CustomeTokenObtainPairView.as_view()),
+    path("jwt/logout/", LogoutView.as_view()),
 ]

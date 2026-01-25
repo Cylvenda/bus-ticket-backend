@@ -36,11 +36,12 @@ class SeatLayoutSerializer(serializers.ModelSerializer):
 class BusSerializer(serializers.ModelSerializer):
     total_seats = serializers.IntegerField(source="seat_layout.total_seats", read_only=True)
     seat_layout_structure = serializers.CharField(source="seat_layout.layout", read_only=True)
+    company_name = serializers.CharField(source="bus_company.name", read_only=True)
     class Meta:
         model = Bus
         fields = [
             "id",
-            "company",
+            "company_name",
             "plate_number",
             "bus_type",
             "amenities",
@@ -51,7 +52,23 @@ class BusSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
 
+class RouteStopSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = RouteStop
+        fields = [
+            "id",
+            "stop_name",
+            "stop_order",
+            "arrival_offset_min",
+            "departure_offset_min",
+        ]
+        read_only_fields = ["id"]
+
+
 class RouteSerializer(serializers.ModelSerializer):
+    stops = RouteStopSerializer(many=True, read_only=True)
+
     class Meta:
         model = Route
         fields = [
@@ -60,21 +77,10 @@ class RouteSerializer(serializers.ModelSerializer):
             "destination",
             "distance_km",
             "estimated_duration_minutes",
+            "stops",
         ]
         read_only_fields = ["id"]
 
-class RouteStopSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = RouteStop
-        fields = [
-            "id",
-            "route",
-            "stop_name",
-            "stop_order",
-            "arrival_offset_min",
-            "departure_offset_min",
-        ]
-        read_only_fields = ["id"]
 
 class ScheduleTemplateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -162,7 +168,7 @@ class PassengerSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "phone",
-            "age",
+            "age_group",
             "gender",
             "nationality",
             "boarding_point",
@@ -174,15 +180,9 @@ class PassengerSerializer(serializers.ModelSerializer):
 class BookingCreateSerializer(serializers.Serializer):
     schedule_id = serializers.IntegerField()
     bus_assignment_id = serializers.IntegerField()
-    seat_number = serializers.IntegerField(min_value=1)
+    seat_number = serializers.CharField(required=True, max_length=5)
     promo_code = serializers.CharField(required=False, allow_blank=True, max_length=20)
     passenger = PassengerSerializer()
-
-    def validate_seat_number(self, value):
-        if value < 1:
-            raise serializers.ValidationError("Seat number must be positive")
-        return value
-
 
 class BusMinimalSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source="company.name", read_only=True)
@@ -191,8 +191,8 @@ class BusMinimalSerializer(serializers.ModelSerializer):
         model = Bus
         fields = ["id", "plate_number", "company_name"]
 
-
-class BusAssignmentSerializer(serializers.ModelSerializer):
+# for booking only
+class BusAsignmentSerializer(serializers.ModelSerializer):
     bus = BusMinimalSerializer(read_only=True)
 
     class Meta:
@@ -200,9 +200,30 @@ class BusAssignmentSerializer(serializers.ModelSerializer):
         fields = ["id", "available_seats", "bus"]
 
 
+class ScheduleBookingSerializer(serializers.ModelSerializer):
+    route = serializers.CharField(source="template.route.__str__", read_only=True)
+    route_origin = serializers.CharField(source="template.route.origin", read_only=True)
+    route_destination = serializers.CharField(
+        source="template.route.destination", read_only=True
+    )
+
+    class Meta:
+        model = Schedule
+        fields = [
+            "id",
+            "route",
+            "route_origin",
+            "route_destination",
+            "travel_date",
+            "departure_time",
+            "arrival_time",
+            "price",
+        ]
+
+
 class BookingSerializer(serializers.ModelSerializer):
-    schedule = ScheduleSerializer(read_only=True)
-    bus_assignment = BusAssignmentSerializer(read_only=True)
+    schedule = ScheduleBookingSerializer(read_only=True)
+    bus_assignment = BusAsignmentSerializer(read_only=True)
     passenger = PassengerSerializer(read_only=True)
 
     class Meta:

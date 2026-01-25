@@ -10,10 +10,10 @@ class Command(BaseCommand):
         now = timezone.now()
 
         expired_bookings = Booking.objects.filter(
-            status="HELD", hold_expires_at__lt=now
+            status="PENDING_PAYMENT", hold_expires_at__lt=now
         )
 
-        count = expired_bookings.update(status="CANCELLED")
+        count = expired_bookings.update(status="EXPIRED")
 
         self.stdout.write(
             self.style.SUCCESS(f"Successfully released {count} expired held seats")

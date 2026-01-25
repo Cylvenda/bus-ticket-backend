@@ -107,6 +107,10 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+        "OPTIONS": {
+            "timeout": 20,  # Increase timeout to 20 seconds
+            "check_same_thread": False,
+        },
     }
 }
 
@@ -207,3 +211,34 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+
+# ClickPesa Configuration
+CLICKPESA_API_KEY = os.environ.get(
+    "CLICKPESA_API_KEY", "SKsReY8mwueNYQT0pHs2DpramejbtlwFQcFmXScaPV"
+)
+CLICKPESA_CLIENT_ID = os.environ.get(
+    "CLICKPESA_CLIENT_ID", "IDFhp2fjib3SO0hJ9MlzJtDoCsGv3dlV"
+)
+CLICKPESA_SECRET = os.environ.get("CLICKPESA_SECRET", "your-secret-key")
+CLICKPESA_BASE_URL = os.environ.get("CLICKPESA_BASE_URL", "https://api.clickpesa.com")
+
+# Logging
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "file": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            "filename": "payments.log",
+        },
+    },
+    "loggers": {
+        "payment_services": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}

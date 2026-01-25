@@ -4,7 +4,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from django.db import transaction
+from rest_framework.pagination import PageNumberPagination
+from django.db import transaction, IntegrityError
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from .models import (
@@ -37,6 +38,7 @@ from django.db.models import Count
 from django.utils import timezone
 from datetime import timedelta
 from typing import cast, Any
+
 
 HOLD_DURATION_MINUTES = 10
 
@@ -93,7 +95,9 @@ class SearchRouteView(APIView):
     def post(self, request):
         serializer = SearchRouteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         validated_data = serializer.validated_data
+        assert isinstance(validated_data, dict)
 
         origin = validated_data["origin"]
         destination = validated_data["destination"]
@@ -154,51 +158,94 @@ class SearchRouteView(APIView):
         )
 
 
+class RouteStopsView(APIView):
+    
+    def get(self, request, route_id):
+        stops = RouteStop.objects.filter(route_id=route_id).order_by("stop_order")
+
+        if not stops.exists():
+            return Response(
+                {"detail": "No stops found for this route"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = RouteStopSerializer(stops, many=True)
+        return Response(serializer.data)
+
+
 @api_view(["POST"])
 def hold_seat(request):
+    """
+    Hold a seat temporarily for a user or guest.
+    Returns booking ID and hold expiry time.
+    """
     user = request.user if request.user.is_authenticated else None
 
-    schedule_id = request.data["schedule_id"]
-    bus_assignment_id = request.data["bus_assignment_id"]
-    seat_number = request.data["seat_number"]
+    schedule_id = request.data.get("schedule_id")
+    bus_assignment_id = request.data.get("bus_assignment_id")
+    seat_number = request.data.get("seat_number")
 
-    expires_at = timezone.now() + timedelta(minutes=HOLD_DURATION_MINUTES)
-
-    now = timezone.now()
-
-    with transaction.atomic():
-        # Check if seat already HELD or CONFIRMED, ignoring expired HELD seats
-        exists = (
-            Booking.objects.filter(
-                bus_assignment_id=bus_assignment_id,
-                seat_number=seat_number,
-                status__in=["HELD", "CONFIRMED"],
-            )
-            .exclude(
-                status="HELD", hold_expires_at__lt=now  # exclude expired HELD seats
-            )
-            .exists()
+    if not all([schedule_id, bus_assignment_id, seat_number]):
+        return Response(
+            {"detail": "schedule_id, bus_assignment_id and seat_number are required"},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
-        if exists:
-            return Response(
-                {"detail": "Seat already booked or held"},
-                status=status.HTTP_409_CONFLICT,
+    expires_at = timezone.now() + timedelta(minutes=HOLD_DURATION_MINUTES)
+    now = timezone.now()
+
+    try:
+        with transaction.atomic():
+            # Check if the seat is already HELD or CONFIRMED (ignore expired HELD)
+            seat_taken = (
+                Booking.objects.select_for_update()
+                .filter(
+                    bus_assignment_id=bus_assignment_id,
+                    seat_number=seat_number,
+                    status__in=["HELD", "CONFIRMED"],
+                )
+                .exclude(status="HELD", hold_expires_at__lt=now)
+                .exists()
             )
 
-        # Create the HELD booking
-        booking = Booking.objects.create(
-            user=user,
-            schedule_id=schedule_id,
-            bus_assignment_id=bus_assignment_id,
-            seat_number=seat_number,
-            price_paid=Schedule.objects.get(id=schedule_id).price,
-            status="HELD",
-            hold_expires_at=expires_at,
+            if seat_taken:
+                return Response(
+                    {"detail": "Seat already booked or held"},
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            # Get the schedule price
+            try:
+                schedule = Schedule.objects.get(id=schedule_id)
+            except Schedule.DoesNotExist:
+                return Response(
+                    {"detail": "Schedule not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            # Create the HELD booking
+            booking = Booking.objects.create(
+                user=user,
+                schedule_id=schedule_id,
+                bus_assignment_id=bus_assignment_id,
+                seat_number=seat_number,
+                price_paid=schedule.price,
+                status="HELD",
+                hold_expires_at=expires_at,
+            )
+
+    except IntegrityError:
+        # Last line of defense against race conditions
+        return Response(
+            {"detail": "Seat already booked or held"},
+            status=status.HTTP_409_CONFLICT,
         )
 
     return Response(
-        {"booking_id": booking.pk, "hold_expires_at": booking.hold_expires_at},
+        {
+            "booking_id": booking.pk,
+            "hold_expires_at": booking.hold_expires_at,
+        },
         status=status.HTTP_201_CREATED,
     )
 
@@ -223,7 +270,7 @@ class CreateBookingView(APIView):
         # Validate schedule
         try:
             schedule = Schedule.objects.select_related("template").get(
-                id=schedule_id, status="ACTIVE"
+                id=schedule_id,
             )
         except Schedule.DoesNotExist:
             return Response(
@@ -234,7 +281,8 @@ class CreateBookingView(APIView):
         # Validate bus assignment
         try:
             bus_assignment = BusAssignment.objects.select_related("bus").get(
-                id=bus_assignment_id, schedule=schedule, status="ACTIVE"
+                id=bus_assignment_id,
+                schedule=schedule,
             )
         except BusAssignment.DoesNotExist:
             return Response(
@@ -242,12 +290,12 @@ class CreateBookingView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Validate seat number is within bus capacity
-        if seat_number < 1 or seat_number > bus_assignment.bus.seat_layout.total_seats:
+        seat_layout = bus_assignment.bus.seat_layout
+        valid_seats = seat_layout.get_all_seats()
+
+        if seat_number not in valid_seats:
             return Response(
-                {
-                    "detail": f"Invalid seat number. This bus has seats 1-{bus_assignment.bus.seat_layout.total_seats}"
-                },
+                {"detail": "Invalid seat number for this bus"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -311,6 +359,15 @@ class CreateBookingView(APIView):
                 "price_paid": str(final_price),
                 "original_price": str(schedule.price),
                 "discount": str(schedule.price - final_price) if promo else "0.00",
+                "passenger": {
+                    "first_name": booking.passenger.first_name,
+                    "last_name": booking.passenger.last_name,
+                    "email": booking.passenger.email,
+                    "phone": booking.passenger.phone,
+                    "age_group": booking.passenger.age_group,
+                    "gender": booking.passenger.gender,
+                    "nationality": booking.passenger.nationality,
+                },
             },
             status=status.HTTP_201_CREATED,
         )
@@ -352,20 +409,89 @@ def get_seat_status(request):
         }
     )
 
-
 class BookingListView(APIView):
     def get(self, request):
-        bookings = Booking.objects.select_related(
-            "schedule",
-            "schedule__template",
-            "schedule__template__route",
-            "bus_assignment",
-            "bus_assignment__bus",
-            "bus_assignment__bus__company",
-            "bus_assignment__bus__seat_layout",
-            "passenger",
-            "user",
+        bookings = (
+            Booking.objects.select_related(
+                "schedule",
+                "schedule__template",
+                "schedule__template__route",
+                "bus_assignment",
+                "bus_assignment__bus",
+                "bus_assignment__bus__company",
+                "bus_assignment__bus__seat_layout",
+                "passenger",
+                "user",
+            )
+            .filter(status="CONFIRMED")
+            .order_by("-id")
         )
 
-        serializer = BookingSerializer(bookings, many=True)
-        return Response(serializer.data)
+        paginator = PageNumberPagination()
+        paginator.page_size = 20
+
+        page = paginator.paginate_queryset(bookings, request)
+
+        serializer = BookingSerializer(page, many=True)
+
+        return paginator.get_paginated_response(serializer.data)
+
+class UserBookingListView(APIView):
+    """
+    View to return bookings for the authenticated user only
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Filter bookings by the authenticated user
+        bookings = (
+            Booking.objects.select_related(
+                "schedule",
+                "schedule__template",
+                "schedule__template__route",
+                "bus_assignment",
+                "bus_assignment__bus",
+                "bus_assignment__bus__company",
+                "bus_assignment__bus__seat_layout",
+                "passenger",
+                "user",
+            )
+            .filter(user=request.user)  # Filter by authenticated user
+            .order_by("-id")
+        )
+
+        # Optional: Filter by status if provided in query params
+        status = request.query_params.get("status", None)
+        if status:
+            bookings = bookings.filter(status=status.upper())
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 20
+
+        page = paginator.paginate_queryset(bookings, request)
+
+        serializer = BookingSerializer(page, many=True)
+
+        return paginator.get_paginated_response(serializer.data)
+
+
+class UserBookingStatsView(APIView):
+    """
+    View to return booking statistics for the authenticated user
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_bookings = Booking.objects.filter(user=request.user)
+
+        stats = {
+            "total_bookings": user_bookings.count(),
+            "pending": user_bookings.filter(status="PENDING").count(),
+            "confirmed": user_bookings.filter(status="CONFIRMED").count(),
+            "cancelled": user_bookings.filter(status="CANCELLED").count(),
+            "completed": user_bookings.filter(status="COMPLETED").count(),
+        }
+
+        return Response(stats)
