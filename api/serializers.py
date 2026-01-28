@@ -140,7 +140,7 @@ class ScheduleSearchSerializer(serializers.ModelSerializer):
     buses = BusAssignmentSerializer(source="bus_assignments", many=True, read_only=True)
     route = serializers.CharField(source="template.route.__str__", read_only=True)
     route_origin = serializers.CharField(source="template.route.origin", read_only=True)
-    route_id = RouteSerializer(source="route.id", read_only=True)
+    route_id = serializers.IntegerField(source="template.route.id", read_only=True)
     route_destination = serializers.CharField(
         source="template.route.destination", read_only=True
     )
