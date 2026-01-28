@@ -22,6 +22,7 @@ class BusCompanySerializer(serializers.ModelSerializer):
             "name",
             "contact_email",
             "contact_phone",
+            "address",
             "license_number",
             "created_at",
         ]
@@ -35,29 +36,41 @@ class SeatLayoutSerializer(serializers.ModelSerializer):
 
 class BusSerializer(serializers.ModelSerializer):
     total_seats = serializers.IntegerField(source="seat_layout.total_seats", read_only=True)
-    seat_layout_structure = serializers.CharField(source="seat_layout.layout", read_only=True)
-    company_name = serializers.CharField(source="bus_company.name", read_only=True)
+    seat_layout_structure = serializers.JSONField(source="seat_layout.layout", read_only=True)
+    company_name = serializers.CharField(source="company.name", read_only=True)
+    company_id = serializers.PrimaryKeyRelatedField(
+        source="company", queryset=BusCompany.objects.all(), write_only=True
+    )
+    seat_layout_id = serializers.PrimaryKeyRelatedField(
+        source="seat_layout", queryset=SeatLayout.objects.all(), write_only=True
+    )
     class Meta:
         model = Bus
         fields = [
             "id",
             "company_name",
+            "company_id",
             "plate_number",
             "bus_type",
             "amenities",
             "is_active",
             "total_seats",
             "seat_layout_structure",
+            "seat_layout_id",
         ]
         read_only_fields = ["id"]
 
 
 class RouteStopSerializer(serializers.ModelSerializer):
+    route_id = serializers.PrimaryKeyRelatedField(
+        source="route", queryset=Route.objects.all(), write_only=True
+    )
 
     class Meta:
         model = RouteStop
         fields = [
             "id",
+            "route_id",
             "stop_name",
             "stop_order",
             "arrival_offset_min",
@@ -97,6 +110,9 @@ class ScheduleTemplateSerializer(serializers.ModelSerializer):
 
 class ScheduleSerializer(serializers.ModelSerializer):
     template = ScheduleTemplateSerializer(read_only=True)
+    template_id = serializers.PrimaryKeyRelatedField(
+        source="template", queryset=ScheduleTemplate.objects.all(), write_only=True
+    )
 
     class Meta:
         model = Schedule
@@ -107,6 +123,7 @@ class ScheduleSerializer(serializers.ModelSerializer):
             "arrival_time",
             "price",
             "template",
+            "template_id",
         ]
 
 

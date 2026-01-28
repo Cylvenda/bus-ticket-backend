@@ -9,6 +9,7 @@ from api import views
 router = DefaultRouter()
 router.register("bus-companies", views.BusCompanyViewSet, basename="bus-company")
 router.register("bus", views.BusViewSet, basename="bus")
+router.register("seat-layout", views.SeatLayoutViewSet, basename="seat-layout")
 router.register("route", views.RouteViewSet, basename="route")
 router.register("route-stop", views.RouteStopViewSet, basename="route-stop")
 router.register(

@@ -16,6 +16,7 @@ from .models import (
     RouteStop,
     ScheduleTemplate,
     Schedule,
+    SeatLayout,
     Passenger,
     PromoCode,
     Booking,
@@ -32,6 +33,7 @@ from .serializers import (
     BookingCreateSerializer,
     SearchRouteSerializer,
     BookingCreateSerializer,
+    SeatLayoutSerializer,
 )
 from .services import apply_promo, book_seat
 from django.db.models import Count
@@ -52,6 +54,12 @@ class BusCompanyViewSet(ModelViewSet):
 class BusViewSet(ModelViewSet):
     serializer_class = BusSerializer
     queryset = Bus.objects.all()
+    permission_classes = [IsAuthenticated]
+
+
+class SeatLayoutViewSet(ModelViewSet):
+    serializer_class = SeatLayoutSerializer
+    queryset = SeatLayout.objects.all()
     permission_classes = [IsAuthenticated]
 
 
