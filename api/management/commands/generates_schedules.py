@@ -55,7 +55,6 @@ class Command(BaseCommand):
                         schedule=schedule,
                         bus=bus,
                         available_seats=bus.seat_layout.total_seats,
-                        status="ACTIVE",
                     )
 
                 created_count += 1

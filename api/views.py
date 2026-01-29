@@ -179,6 +179,52 @@ class RouteStopsView(APIView):
 
         serializer = RouteStopSerializer(stops, many=True)
         return Response(serializer.data)
+    
+    def post(self, request, route_id):
+        """
+        Add a new stop to an existing route
+        """
+        try:
+            route = Route.objects.get(id=route_id)
+        except Route.DoesNotExist:
+            return Response(
+                {"detail": "Route not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        
+        # Validate required fields
+        stop_name = request.data.get("stop_name")
+        stop_order = request.data.get("stop_order")
+        arrival_offset_min = request.data.get("arrival_offset_min")
+        departure_offset_min = request.data.get("departure_offset_min")
+        
+        if not stop_name or stop_order is None:
+            return Response(
+                {
+                    "stop_name": ["This field is required."],
+                    "stop_order": ["This field is required."]
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Check if stop order already exists for this route
+        if RouteStop.objects.filter(route=route, stop_order=stop_order).exists():
+            return Response(
+                {"stop_order": ["A stop with this order already exists for this route."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Create the new route stop
+        route_stop = RouteStop.objects.create(
+            route=route,
+            stop_name=stop_name,
+            stop_order=stop_order,
+            arrival_offset_min=arrival_offset_min,
+            departure_offset_min=departure_offset_min
+        )
+        
+        serializer = RouteStopSerializer(route_stop)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 @api_view(["POST"])
