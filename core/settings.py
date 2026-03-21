@@ -213,16 +213,6 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 
-# ClickPesa Configuration
-CLICKPESA_API_KEY = os.environ.get(
-    "CLICKPESA_API_KEY", "SKsReY8mwueNYQT0pHs2DpramejbtlwFQcFmXScaPV"
-)
-CLICKPESA_CLIENT_ID = os.environ.get(
-    "CLICKPESA_CLIENT_ID", "IDFhp2fjib3SO0hJ9MlzJtDoCsGv3dlV"
-)
-CLICKPESA_SECRET = os.environ.get("CLICKPESA_SECRET", "your-secret-key")
-CLICKPESA_BASE_URL = os.environ.get("CLICKPESA_BASE_URL", "https://api.clickpesa.com")
-
 # Logging
 LOGGING = {
     "version": 1,
